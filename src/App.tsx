@@ -1,39 +1,32 @@
-import { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import PhonePanel from './components/PhonePanel';
 import RightPanel from './components/RightPanel';
-import { ROUTINE_MAP } from './constants/routines';
 
 function App() {
-  /**
-   * This is the "Person's Routine Map".
-   * Key: The hour (number)
-   * Value: The routine ID (string) from ROUTINE_MAP
-   */
+  // Global State for the schedule (Hour -> Routine ID)
   const [userSchedule, setUserSchedule] = useState<Record<number, string>>({});
-
-  // Effect to store/log whenever the person changes their routine
-  useEffect(() => {
-    console.log("Saving user's routine map:", userSchedule);
-    // You could easily swap this for localStorage.setItem('myRoutine', JSON.stringify(userSchedule))
-  }, [userSchedule]);
-
-  const containerStyle: React.CSSProperties = {
-    display: 'flex',
-    width: '100vw',
-    height: '100vh',
-    overflow: 'hidden',
-  };
+  
+  // Global State for Streaks (Name -> Count)
+  const [streaks, setStreaks] = useState<Record<string, number>>({
+    'Gym': 0 // Initialized Gym streak
+  });
 
   return (
-    <div style={containerStyle}>
-      {/* Passing the map to the phone so it knows what to do NOW */}
-      <PhonePanel userSchedule={userSchedule} />
-      
-      {/* Passing the map and the setter to the right so the person can edit it */}
-      <RightPanel 
-        userSchedule={userSchedule} 
-        setUserSchedule={setUserSchedule} 
-      />
+    <div style={{ display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden' }}>
+      {/* 35% Width for Phone Display */}
+      <div style={{ flex: '0 0 35%', borderRight: '1px solid #ddd' }}>
+        <PhonePanel userSchedule={userSchedule} streaks={streaks} />
+      </div>
+
+      {/* 65% Width for Control Panel */}
+      <div style={{ flex: '1' }}>
+        <RightPanel 
+          userSchedule={userSchedule} 
+          setUserSchedule={setUserSchedule} 
+          streaks={streaks}
+          setStreaks={setStreaks}
+        />
+      </div>
     </div>
   );
 }

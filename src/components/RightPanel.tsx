@@ -1,88 +1,114 @@
 import React, { useState } from 'react';
 import { ROUTINE_MAP } from '../constants/routines';
 
-type Tab = 'fix' | 'messages' | 'streaks' | 'moodboard';
+type Tab = 'fix' | 'streaks' | 'chat' | 'moodboard';
 
 interface RightPanelProps {
   userSchedule: Record<number, string>;
   setUserSchedule: React.Dispatch<React.SetStateAction<Record<number, string>>>;
+  streaks: Record<string, number>;
+  setStreaks: React.Dispatch<React.SetStateAction<Record<string, number>>>;
 }
 
-const RightPanel: React.FC<RightPanelProps> = ({ userSchedule, setUserSchedule }) => {
+const RightPanel: React.FC<RightPanelProps> = ({ userSchedule, setUserSchedule, streaks, setStreaks }) => {
   const [activeTab, setActiveTab] = useState<Tab>('fix');
+  const [newStreakName, setNewStreakName] = useState('');
+  const [feedback, setFeedback] = useState('');
 
-  // Generate hours for the planner
   const hours = Array.from({ length: 16 }, (_, i) => i + 7);
 
-  const navButtons = [
-    { id: 'fix', label: 'Chat', icon: '💬' }, // Using 'Chat' label to match screenshot
-    { id: 'moodboard', label: 'Moodboard', icon: '🖼️' },
-    { id: 'messages', label: 'AI Messages', icon: '🤖' },
-    { id: 'streaks', label: 'Streaks', icon: '🔥' },
-  ];
+  // STREAK ACTIONS
+  const handleIncrement = (name: string) => {
+    const nextVal = (streaks[name] || 0) + 1;
+    setStreaks(prev => ({ ...prev, [name]: nextVal }));
+    
+    if ([7, 14, 30, 365].includes(nextVal)) setFeedback(`🏆 Milestone! ${nextVal} days of ${name}!`);
+    else setFeedback(`Congratulations! ${name} streak is now ${nextVal}! ✨`);
+  };
+
+  const handleReset = (name: string) => {
+    setStreaks(prev => ({ ...prev, [name]: 0 }));
+    setFeedback(`Reset ${name}. All the best for your fresh start! 💪`);
+  };
 
   return (
-    <div style={containerStyle}>
-      {/* 1. TOP NAVIGATION BAR */}
-      <nav style={topNavStyle}>
-        {navButtons.map((btn) => (
+    <div style={panelContainer}>
+      {/* Top Nav */}
+      <nav style={topNav}>
+        {[
+          { id: 'fix', label: 'Fix Routine', icon: '🔧' },
+          { id: 'streaks', label: 'Streaks', icon: '🔥' },
+          { id: 'chat', label: 'Chat', icon: '💬' },
+        ].map(btn => (
           <button
             key={btn.id}
-            onClick={() => setActiveTab(btn.id as Tab)}
-            style={{
-              ...tabButtonStyle,
-              backgroundColor: activeTab === btn.id ? '#f39c12' : 'transparent',
-              color: activeTab === btn.id ? '#fff' : '#bcaaa4',
-              boxShadow: activeTab === btn.id ? '0 4px 10px rgba(243, 156, 18, 0.3)' : 'none',
+            onClick={() => { setActiveTab(btn.id as Tab); setFeedback(''); }}
+            style={{ 
+              ...tabBtn, 
+              backgroundColor: activeTab === btn.id ? '#f39c12' : 'transparent', 
+              color: activeTab === btn.id ? '#fff' : '#bcaaa4' 
             }}
           >
-            <span style={{ marginRight: '6px', fontSize: '1.1rem' }}>{btn.icon}</span>
-            {btn.label}
+            <span style={{ marginRight: '6px' }}>{btn.icon}</span> {btn.label}
           </button>
         ))}
       </nav>
 
-      {/* 2. PARTICIPANTS SECTION */}
-      <div style={participantsSection}>
-        <div style={sectionLabel}>PARTICIPANTS</div>
-        <div style={userBadge}>
-          <span style={{ marginRight: '6px' }}>👤</span> Janavi
-        </div>
+      {/* Header */}
+      <div style={headerSection}>
+        <div style={labelStyle}>PARTICIPANTS</div>
+        <div style={badgeStyle}>👤 Janavi</div>
+        {feedback && <div style={feedbackToast}>{feedback}</div>}
       </div>
 
-      {/* 3. MAIN CONTENT AREA */}
-      <main style={contentAreaStyle}>
-        {activeTab === 'fix' ? (
-          <div style={plannerWrapper}>
-            <div style={plannerHeader}>
-              <h3 style={{ margin: 0, fontSize: '1rem', color: '#5d4037' }}>Fix Your Routine</h3>
-              <span style={{ fontSize: '0.7rem', color: '#8d6e63' }}>Assign AI modes to hours</span>
-            </div>
-            
+      <main style={{ padding: '0 25px 25px', overflowY: 'auto' }}>
+        {activeTab === 'fix' && (
+          <div style={cardWrapper}>
             <div style={gridContainer}>
-              {hours.map((hour) => (
-                <div key={hour} style={compactSlotStyle}>
-                  <span style={timeTextStyle}>
-                    {hour > 12 ? `${hour - 12} PM` : hour === 12 ? '12 PM' : `${hour} AM`}
-                  </span>
+              {hours.map(h => (
+                <div key={h} style={slotItem}>
+                  <span style={timeText}>{h > 12 ? `${h-12} PM` : h === 12 ? '12 PM' : `${h} AM`}</span>
                   <select 
-                    value={userSchedule[hour] || ''} 
-                    onChange={(e) => setUserSchedule(prev => ({...prev, [hour]: e.target.value}))}
-                    style={compactSelectStyle}
+                    value={userSchedule[h] || ''} 
+                    onChange={e => setUserSchedule(p => ({...p, [h]: e.target.value}))}
+                    style={selectStyle}
                   >
                     <option value="">None</option>
-                    {Object.entries(ROUTINE_MAP).map(([id, config]) => (
-                      <option key={id} value={id}>{config.label.split(' ')[1] || config.label}</option>
-                    ))}
+                    {Object.entries(ROUTINE_MAP).map(([id, cfg]) => <option key={id} value={id}>{cfg.label}</option>)}
                   </select>
                 </div>
               ))}
             </div>
           </div>
-        ) : (
-          <div style={placeholderCard}>
-            <h3>{activeTab.toUpperCase()}</h3>
-            <p>Adaptive AI module loading...</p>
+        )}
+
+        {activeTab === 'streaks' && (
+          <div style={cardWrapper}>
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+              <input 
+                value={newStreakName} 
+                onChange={e => setNewStreakName(e.target.value)}
+                placeholder="New Streak (e.g. Gym)"
+                style={{ flex: 1, padding: '10px', borderRadius: '10px', border: '1px solid #ffe0b2' }}
+              />
+              <button 
+                onClick={() => {
+                  if(!newStreakName) return;
+                  setStreaks(p => ({...p, [newStreakName]: 0}));
+                  setNewStreakName('');
+                }}
+                style={{ padding: '0 15px', backgroundColor: '#f39c12', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold' }}
+              >Add</button>
+            </div>
+            {Object.entries(streaks).map(([name, val]) => (
+              <div key={name} style={streakCard}>
+                <span style={{ fontWeight: '700' }}>{name}: {val} days</span>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={() => handleIncrement(name)} style={plusBtn}>+</button>
+                  <button onClick={() => handleReset(name)} style={resetBtn}>Reset</button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </main>
@@ -90,129 +116,21 @@ const RightPanel: React.FC<RightPanelProps> = ({ userSchedule, setUserSchedule }
   );
 };
 
-// --- STYLES ---
-
-const containerStyle: React.CSSProperties = {
-  flex: 1,
-  display: 'flex',
-  flexDirection: 'column',
-  backgroundColor: '#fff3e0', // Warm cream background
-  height: '100vh',
-  fontFamily: '"Inter", "Segoe UI", sans-serif',
-};
-
-const topNavStyle: React.CSSProperties = {
-  display: 'flex',
-  padding: '15px 25px',
-  gap: '12px',
-  borderBottom: '1px solid #ffe0b2',
-  alignItems: 'center',
-};
-
-const tabButtonStyle: React.CSSProperties = {
-  padding: '8px 18px',
-  border: 'none',
-  borderRadius: '12px',
-  fontSize: '0.85rem',
-  fontWeight: '700',
-  cursor: 'pointer',
-  display: 'flex',
-  alignItems: 'center',
-  transition: 'all 0.2s ease',
-};
-
-const participantsSection: React.CSSProperties = {
-  padding: '15px 25px',
-  display: 'flex',
-  alignItems: 'center',
-  gap: '15px',
-};
-
-const sectionLabel: React.CSSProperties = {
-  fontSize: '0.65rem',
-  fontWeight: '900',
-  color: '#bcaaa4',
-  letterSpacing: '1.5px',
-};
-
-const userBadge: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  padding: '6px 16px',
-  backgroundColor: '#f39c12',
-  color: 'white',
-  borderRadius: '20px',
-  fontSize: '0.8rem',
-  fontWeight: 'bold',
-  boxShadow: '0 2px 8px rgba(243, 156, 18, 0.2)',
-};
-
-const contentAreaStyle: React.CSSProperties = {
-  flex: 1,
-  padding: '0 25px 25px 25px',
-  overflowY: 'auto',
-};
-
-const plannerWrapper: React.CSSProperties = {
-  backgroundColor: 'rgba(255, 255, 255, 0.5)',
-  borderRadius: '24px',
-  padding: '20px',
-  border: '1px solid #ffe0b2',
-};
-
-const plannerHeader: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'flex-end',
-  marginBottom: '15px',
-  borderBottom: '1px solid #ffe0b2',
-  paddingBottom: '10px',
-};
-
-const gridContainer: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(2, 1fr)',
-  gap: '10px',
-};
-
-const compactSlotStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  padding: '8px 12px',
-  backgroundColor: '#fff',
-  borderRadius: '12px',
-  border: '1px solid #fff3e0',
-};
-
-const timeTextStyle: React.CSSProperties = {
-  fontSize: '0.7rem',
-  fontWeight: '800',
-  color: '#bcaaa4',
-  width: '50px',
-};
-
-const compactSelectStyle: React.CSSProperties = {
-  flex: 1,
-  fontSize: '0.8rem',
-  border: 'none',
-  backgroundColor: 'transparent',
-  color: '#5d4037',
-  outline: 'none',
-  fontWeight: '600',
-  cursor: 'pointer',
-};
-
-const placeholderCard: React.CSSProperties = {
-  height: '200px',
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'center',
-  backgroundColor: 'rgba(255, 255, 255, 0.3)',
-  borderRadius: '24px',
-  border: '2px dashed #ffe0b2',
-  color: '#8d6e63',
-  marginTop: '20px',
-};
+// --- Styles (Briefly summarized) ---
+const panelContainer: React.CSSProperties = { flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#fff3e0', height: '100vh', fontFamily: 'Inter, sans-serif' };
+const topNav: React.CSSProperties = { display: 'flex', padding: '15px 25px', gap: '10px', borderBottom: '1px solid #ffe0b2' };
+const tabBtn: React.CSSProperties = { padding: '8px 16px', border: 'none', borderRadius: '12px', fontSize: '0.85rem', fontWeight: '700', cursor: 'pointer' };
+const headerSection: React.CSSProperties = { padding: '15px 25px', display: 'flex', alignItems: 'center', gap: '12px' };
+const labelStyle: React.CSSProperties = { fontSize: '0.65rem', fontWeight: '900', color: '#bcaaa4', letterSpacing: '1px' };
+const badgeStyle: React.CSSProperties = { padding: '6px 14px', backgroundColor: '#f39c12', color: 'white', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' };
+const feedbackToast: React.CSSProperties = { color: '#d35400', fontSize: '0.75rem', fontWeight: 'bold', marginLeft: 'auto' };
+const cardWrapper: React.CSSProperties = { backgroundColor: 'rgba(255,255,255,0.5)', padding: '20px', borderRadius: '24px', border: '1px solid #ffe0b2' };
+const gridContainer: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' };
+const slotItem: React.CSSProperties = { display: 'flex', alignItems: 'center', padding: '8px 12px', backgroundColor: '#fff', borderRadius: '10px', border: '1px solid #fff3e0' };
+const timeText: React.CSSProperties = { fontSize: '0.7rem', fontWeight: '800', color: '#bcaaa4', width: '45px' };
+const selectStyle: React.CSSProperties = { flex: 1, border: 'none', backgroundColor: 'transparent', fontSize: '0.8rem', fontWeight: '600', color: '#5d4037', outline: 'none' };
+const streakCard: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', backgroundColor: '#fff', borderRadius: '12px', marginBottom: '8px' };
+const plusBtn: React.CSSProperties = { padding: '5px 12px', backgroundColor: '#27ae60', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer' };
+const resetBtn: React.CSSProperties = { padding: '5px 12px', backgroundColor: '#e74c3c', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer' };
 
 export default RightPanel;
